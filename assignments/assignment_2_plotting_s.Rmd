@@ -32,6 +32,31 @@ The 2020-09-22 TidyTueday datasets are about climbing expeditions. From the thre
 
 ```{r}
 
+climbing <- tt_load("2020-09-22")
+
+
+expeditions <- climbing$expeditions %>%
+
+  mutate(peak_name = fct_lump(peak_name, n = 15)) %>%
+  
+  filter(peak_name != "Other") %>%
+
+  mutate(peak_name = fct_reorder(peak_name, .x = peak_name, .fun = length))
+
+
+ggplot(expeditions, aes(y = peak_name, fill = season)) +
+  
+  geom_bar() +
+  scale_fill_viridis_d() +
+  theme_light() +
+  
+  theme(axis.text.x = element_text(angle = 0, hjust = 1), legend.position = "bottom") +
+  
+  labs(title = "The 15 most popular peaks stacked by season of expedition", x = "Number of expeditions", y = NULL, fill = "Season")
+
+
+
+
 ```
 
 ## Task 2: PhDs awarded
@@ -46,6 +71,24 @@ Notes:
 
 ```{r}
 
+phd_awarded <- tt_load("2019-02-19")
+
+
+phd_awarded <- phd_awarded$phd_by_field %>%
+  
+  group_by(year, broad_field) %>%
+  summarise(sum_phd = sum(n_phds, na.rm = TRUE))
+
+ggplot(phd_awarded, aes(x = year, y = sum_phd, color = broad_field)) +
+  
+  geom_line(size = 1.2) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme_minimal() +
+  
+  labs(title = "Number of awarded Ph. D.-s in the US by year", x = NULL, y = NULL, color = "Broad Field")
+
 ```
 
 ## Task 3: Commute in the US
@@ -59,5 +102,37 @@ Notes:
 -   The point size is 2, . The theme is set to light.
 
 ```{r}
+
+# commute <- tt_load("2019-11-05")
+
+
+# commute <- commute$commute %>%
+
+commute <- read.csv('./commute.csv')
+commute <- commute %>%
+  
+  filter(mode %in% c("Bike", "Walk")) %>%
+  
+  group_by(state_abb, state_region, mode) %>%
+  
+  summarise(sum_commute = sum(n)) %>%
+  
+  pivot_wider(names_from = mode, values_from = sum_commute)
+
+
+ggplot(commute, aes(x = Walk, y = Bike, color = state_region, label = state_abb)) +
+  
+  geom_point(size = 2) +
+  ggrepel::geom_text_repel(color="black") +
+  theme_light() +
+  
+  scale_x_log10(labels = scales::comma_format()) +
+  scale_y_log10(labels = scales::comma_format()) +
+  
+  labs(title = "Title number of people walking vs. biking to work in each USA state",
+       x = "Number of ppl walking to work (log N)",
+       y = "Number of ppl biking to work (log N)",
+       color = "State region")
+
 
 ```

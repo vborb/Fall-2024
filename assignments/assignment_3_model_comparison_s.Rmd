@@ -58,7 +58,18 @@ In your discussion of the findings, briefly interpret the results of the above a
 
 Read the dataset used in this assignment. Pay attention to the extension of the datafile.
 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+
+```
+
+
 ```{r}
+
+  pain <- read.xlsx("https://github.com/vborb/Fall-2024/raw/refs/heads/main/data/assignment_3_dataset_.xlsx")
+
 
 ```
 
@@ -69,6 +80,19 @@ Read the dataset used in this assignment. Pay attention to the extension of the 
 Run an exploratory data analysis (EDA) to investigate the dataset.
 
 ```{r}
+tolower(pain)
+
+glimpse(pain)
+
+ggplot(pain, aes(ID, pain)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+ggplot(pain, aes(ID, age)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
 
 ```
 
