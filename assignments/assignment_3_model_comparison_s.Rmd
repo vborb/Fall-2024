@@ -62,13 +62,19 @@ Read the dataset used in this assignment. Pay attention to the extension of the 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
+library(openxlsx)
+library(janitor)
+library(gridExtra)
+library(car)
+library(lm.beta)
+library(broom)
 
 ```
 
 
 ```{r}
 
-  pain <- read.xlsx("https://github.com/vborb/Fall-2024/raw/refs/heads/main/data/assignment_3_dataset_.xlsx")
+  pain_management <- read.xlsx("https://github.com/vborb/Fall-2024/raw/refs/heads/main/data/assignment_3_dataset_.xlsx")
 
 
 ```
@@ -80,19 +86,61 @@ library(tidyverse)
 Run an exploratory data analysis (EDA) to investigate the dataset.
 
 ```{r}
-tolower(pain)
 
-glimpse(pain)
+glimpse(pain_management) 
 
-ggplot(pain, aes(ID, pain)) +
+
+#Converting variable names to lowercase
+
+pain_management <- clean_names(pain_management)
+
+
+#Plots to spot unnatural values
+
+pa <- ggplot(pain_management, aes(id, pain)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x=element_blank()) +
   scale_x_discrete(breaks=NULL)
 
-ggplot(pain, aes(ID, age)) +
+se <- ggplot(pain_management, aes(id, sex)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x=element_blank()) +
   scale_x_discrete(breaks=NULL)
+ 
+ag <- ggplot(pain_management, aes(id, age)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+st <- ggplot(pain_management, aes(id, stai_trait)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+pc <- ggplot(pain_management, aes(id, pain_cat)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+cse <- ggplot(pain_management, aes(id, cortisol_serum)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)  
+ 
+csa <- ggplot(pain_management, aes(id, cortisol_saliva)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+mf <- ggplot(pain_management, aes(id, mindfulness)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+
+grid.arrange(pa, se, ag, st, pc, cse, csa, mf,
+          nrow = 3)
+  
 
 ```
 
@@ -101,6 +149,28 @@ ggplot(pain, aes(ID, age)) +
 If you find values in the dataset during the EDA, that are not correct based on the provided descriptions of the variables of the dataset please correct them here.
 
 ```{r}
+
+pain_management_corr <- pain_management %>%
+
+# Correcting pain 
+  
+  mutate(pain = ifelse(pain > 10, 5, pain)) %>%
+
+
+# Correcting sex
+  
+  mutate(sex = ifelse(sex == "woman", "female", sex)) %>%
+  
+
+# Correcting mindfulness
+
+  mutate(mindfulness = ifelse(mindfulness > 6, 3, mindfulness))
+
+
+#Cleaning character values
+
+pain_management_corr$sex <- as.factor(pain_management_corr$sex)
+
 
 ```
 
@@ -111,6 +181,10 @@ In order to test the more complex model for outliers and to test the assumptions
 
 ```{r}
 
+complex_model <- 
+  lm(pain ~ age + sex + stai_trait + pain_cat + cortisol_serum + cortisol_saliva + mindfulness, data=pain_management_corr)
+
+
 ```
 
 #### Checking for influential outliers
@@ -118,6 +192,15 @@ In order to test the more complex model for outliers and to test the assumptions
 Check for outlier values in the model.
 
 ```{r}
+
+cooks_dist <- cooks.distance(complex_model)
+
+plot(cooks_dist)
+
+cooks.distance(complex_model)[which.max(cooks.distance(complex_model))]
+
+
+# No outliers
 
 ```
 
@@ -127,17 +210,89 @@ Check the normality assumption.
 
 ```{r}
 
+residuals <- rstandard(complex_model)
+
+hist(residuals)
+
+shapiro.test(residuals)
+
+ggplot() +
+  geom_qq(aes(sample = residuals)) +
+  geom_abline(color = "red") +
+  coord_fixed()
+
+
+# Normality assumption passed
+
 ```
 
 Check the linearity assumption.
 
 ```{r}
 
+residuals_fitted <- pain_management_corr %>%
+  mutate(fitted = fitted(complex_model), residuals)
+
+
+ag_r <- ggplot(residuals_fitted, aes(age, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+se_r <- ggplot(residuals_fitted, aes(sex, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+st_r <- ggplot(residuals_fitted, aes(stai_trait, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+pc_r <- ggplot(residuals_fitted, aes(pain_cat, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+mf_r <- ggplot(residuals_fitted, aes(mindfulness, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+cse_r <- ggplot(residuals_fitted, aes(cortisol_serum, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+csa_r <- ggplot(residuals_fitted, aes(cortisol_saliva, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+
+grid.arrange(se_r, ag_r, st_r, pc_r, cse_r, csa_r, mf_r,
+          nrow = 3)
+
+
+# Passed
+
 ```
 
 Check the homoscedasticty assumption (homogeneity of variance).
 
 ```{r}
+
+
+ggplot(residuals_fitted, aes(fitted, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+
+ncvTest(complex_model)
+
+
+# Breusch-Pagan Test passed
 
 ```
 
@@ -151,6 +306,13 @@ http://blog.minitab.com/blog/understanding-statistics/handling-multicollinearity
 
 ```{r}
 
+vif(complex_model)
+
+
+# Cortisol saliva & serum predictors are problematic
+
+# Cortisol saliva will go, since the cc is less accurate
+
 ```
 
 ### Making decision based on model diagnostics
@@ -159,11 +321,24 @@ If based on the assumption tests you decide to drop a predictor variable you sho
 
 ```{r}
 
+complex_model_corr <- 
+  lm(pain ~ age + sex + stai_trait + pain_cat + cortisol_serum + mindfulness, data=pain_management_corr)
+
+
 ```
 
 #### Checking outliers of the updated model
 
 ```{r}
+
+cooks_dist <- cooks.distance(complex_model_corr)
+
+plot(cooks_dist)
+
+cooks.distance(complex_model_corr)[which.max(cooks.distance(complex_model_corr))]
+
+
+# No outliers
 
 ```
 
@@ -173,11 +348,67 @@ Normality assumption
 
 ```{r}
 
+residuals_corr <- rstandard(complex_model_corr)
+
+hist(residuals_corr)
+
+shapiro.test(residuals_corr)
+
+ggplot() +
+  geom_qq(aes(sample = residuals_corr)) +
+  geom_abline(color = "red") +
+  coord_fixed()
+
+
+# Normality checked
+
 ```
 
 Linearity assumption
 
 ```{r}
+
+residuals_fitted_corr <- pain_management_corr %>%
+  mutate(fitted_corr = fitted(complex_model_corr), residuals_corr)
+
+
+ag_r_corr <- ggplot(residuals_fitted_corr, aes(age, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+se_r_corr <- ggplot(residuals_fitted_corr, aes(sex, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+st_r_corr <- ggplot(residuals_fitted_corr, aes(stai_trait, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+pc_r_corr <- ggplot(residuals_fitted_corr, aes(pain_cat, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+mf_r_corr <- ggplot(residuals_fitted_corr, aes(mindfulness, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+cse_r_corr <- ggplot(residuals_fitted_corr, aes(cortisol_serum, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+
+grid.arrange(se_r_corr, ag_r_corr, st_r_corr, pc_r_corr, cse_r_corr, mf_r_corr,
+          nrow = 3)
+
+
+# Passed?
+
 
 ```
 
@@ -185,11 +416,27 @@ Homoscedasticty assumption (homogeneity of variance)
 
 ```{r}
 
+ggplot(residuals_fitted_corr, aes(fitted_corr, residuals_corr)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+
+ncvTest(complex_model_corr)
+
+
+# Homogeneity checked
+
 ```
 
 Multicollinearity assumption
 
 ```{r}
+
+vif(complex_model_corr)
+
+
+#Multicolinearity checked
 
 ```
 
@@ -199,17 +446,38 @@ Create the simple model and get the results of the model that needs to be report
 
 ```{r}
 
+simple_model <- 
+  lm(pain ~ age + sex, data=pain_management_corr)
+
+print(glance(simple_model))
+print(summary(simple_model))
+print(tidy(simple_model, conf.int = TRUE) )
+
 ```
 
 Create the more complex model based on the results of the model diagnostics. Also, get the results that needs to be reported based on the What to report section.
 
 ```{r}
 
+print(glance(complex_model_corr))
+print(summary(complex_model_corr))
+
+comp_stat <- tidy(complex_model_corr, conf.int = TRUE)
+comp_stat$term <- rownames(table)
+
+#Regression equation:
+
+sprintf("Y = %.3g + %.3g*age + %.3g*sex + %.3g*STAI trait + %.3g*pain catastrophising + %.3g*cortisol_serum + %.3g*mindfulness", comp_stat[1,1], comp_stat[2,1], comp_stat[3,1], comp_stat[4,1], comp_stat[5,1], comp_stat[6,1], comp_stat[7,1])
+
 ```
 
 Compare the two models.
 
 ```{r}
+
+anova(simple_model, complex_model_corr)
+
+#The more complex model is significantly better in explaining the variability in perceived pain after wisdom tooth surgery. 
 
 ```
 
