@@ -189,7 +189,7 @@ complex_model <-
 
 #### Checking for influential outliers
 
-Check for outlier values in the model.
+Since all the values are below 1, the are no outliers
 
 ```{r}
 
@@ -200,13 +200,13 @@ plot(cooks_dist)
 cooks.distance(complex_model)[which.max(cooks.distance(complex_model))]
 
 
-# No outliers
-
 ```
 
 #### Checking assumptions
 
 Check the normality assumption.
+
+Passed.
 
 ```{r}
 
@@ -222,11 +222,11 @@ ggplot() +
   coord_fixed()
 
 
-# Normality assumption passed
-
 ```
 
 Check the linearity assumption.
+
+Passed.
 
 ```{r}
 
@@ -274,11 +274,11 @@ grid.arrange(se_r, ag_r, st_r, pc_r, cse_r, csa_r, mf_r,
           nrow = 3)
 
 
-# Passed
-
 ```
 
 Check the homoscedasticty assumption (homogeneity of variance).
+
+Breusch-Pagan Test passed
 
 ```{r}
 
@@ -292,8 +292,6 @@ ggplot(residuals_fitted, aes(fitted, residuals)) +
 ncvTest(complex_model)
 
 
-# Breusch-Pagan Test passed
-
 ```
 
 Check the multicollinearity assumption.
@@ -304,14 +302,16 @@ Some info about VIF:
 https://statisticalhorizons.com/multicollinearity
 http://blog.minitab.com/blog/understanding-statistics/handling-multicollinearity-in-regression-analysis
 
+
+
+Cortisol saliva & serum predictors are problematic, since their values are above 3
+
+Cortisol saliva will be excluded, since the cc is less accurate in it than in the serum
+
 ```{r}
 
 vif(complex_model)
 
-
-# Cortisol saliva & serum predictors are problematic
-
-# Cortisol saliva will go, since the cc is less accurate
 
 ```
 
@@ -329,6 +329,8 @@ complex_model_corr <-
 
 #### Checking outliers of the updated model
 
+No outliers were found.
+
 ```{r}
 
 cooks_dist <- cooks.distance(complex_model_corr)
@@ -337,8 +339,6 @@ plot(cooks_dist)
 
 cooks.distance(complex_model_corr)[which.max(cooks.distance(complex_model_corr))]
 
-
-# No outliers
 
 ```
 
@@ -364,7 +364,7 @@ ggplot() +
 
 ```
 
-Linearity assumption
+Linearity assumption is checked
 
 ```{r}
 
@@ -405,9 +405,6 @@ cse_r_corr <- ggplot(residuals_fitted_corr, aes(cortisol_serum, residuals_corr))
 
 grid.arrange(se_r_corr, ag_r_corr, st_r_corr, pc_r_corr, cse_r_corr, mf_r_corr,
           nrow = 3)
-
-
-# Passed?
 
 
 ```
@@ -463,11 +460,15 @@ print(glance(complex_model_corr))
 print(summary(complex_model_corr))
 
 comp_stat <- tidy(complex_model_corr, conf.int = TRUE)
-comp_stat$term <- rownames(table)
+comp_stat <- comp_stat %>%
+  column_to_rownames(var = "term")
+
+print(comp_stat)
+
 
 #Regression equation:
 
-sprintf("Y = %.3g + %.3g*age + %.3g*sex + %.3g*STAI trait + %.3g*pain catastrophising + %.3g*cortisol_serum + %.3g*mindfulness", comp_stat[1,1], comp_stat[2,1], comp_stat[3,1], comp_stat[4,1], comp_stat[5,1], comp_stat[6,1], comp_stat[7,1])
+sprintf("Y = %.3g + %.3g*age + %.3g*sex + %.3g*STAI trait + %.3g*pain catastrophising + %.3g*cortisol_serum + %.3g*mindfulness", comp_stat["(Intercept)",1], comp_stat["age",1], comp_stat["sexmale",1], comp_stat["stai_trait",1], comp_stat["pain_cat",1], comp_stat["cortisol_serum", 1], comp_stat["mindfulness",1])
 
 ```
 

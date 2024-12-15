@@ -8,7 +8,17 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(haven)
 library(tidyverse)
+library(openxlsx)
+library(janitor)
+library(gridExtra)
+library(car)
+library(lm.beta)
+library(broom)
+library(lme4)
+library(lmtest)
+library(performance)
 ```
 
 # Introduction
@@ -57,23 +67,379 @@ Compare the model coefficients and the confidence intervals observed in this ass
 
 Read the datasets used in this assignment. Pay attention to the extensions of the datafiles.
 
+
 ```{r}
+
+pain_a <- read_sav("https://github.com/vborb/Fall-2024/raw/refs/heads/main/data/assignment_4_dataset_A_.sav")
+
+pain_b <- read_sav("https://github.com/vborb/Fall-2024/raw/refs/heads/main/data/assignment_4_dataset_B_.sav")
 
 ```
 
-## Exploratory data analysis
+## Exploratory data analysis for dataset A
 
 Run an exploratory data analysis (EDA) to investigate the dataset.
 
+The values do not show any deviation for normal values, except for one cell within the sex variable.
+
 ```{r}
+
+glimpse(pain_a) 
+
+
+#Converting variable names to lowercase
+
+pain_a <- clean_names(pain_a)
+
+
+#Plots to spot unnatural values
+
+pa <- ggplot(pain_a, aes(id, pain)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+se <- ggplot(pain_a, aes(id, sex)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+ag <- ggplot(pain_a, aes(id, age)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+st <- ggplot(pain_a, aes(id, stai_trait)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+pc <- ggplot(pain_a, aes(id, pain_cat)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+cse <- ggplot(pain_a, aes(id, cortisol_serum)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)  
+ 
+csa <- ggplot(pain_a, aes(id, cortisol_saliva)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+mf <- ggplot(pain_a, aes(id, mindfulness)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+ho <- ggplot(pain_a, aes(id, hospital)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+
+grid.arrange(pa, se, ag, st, pc, cse, csa, mf, ho,
+          nrow = 3)
+
 
 ```
 
-## Correct coding errors
+## Correct coding errors for dataset A
 
 If you find values in the dataset during the EDA, that are not correct based on the provided descriptions of the variables of the dataset please correct them here.
 
+Here we corrected for the extra variable in sex.
+
 ```{r}
 
+pain_a <- pain_a %>%
+
+  mutate(sex = ifelse(sex == "Male", "male", sex))
+
 ```
+
+## Exploratory data analysis for dataset B
+
+This data set looks clean, only changed capital letters of variables to lowercase. 
+
+```{r}
+
+glimpse(pain_b) 
+
+
+#Converting variable names to lowercase
+
+pain_b <- clean_names(pain_b)
+
+
+#Plots to spot unnatural values
+
+pa <- ggplot(pain_b, aes(id, pain)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+se <- ggplot(pain_b, aes(id, sex)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+ag <- ggplot(pain_b, aes(id, age)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+st <- ggplot(pain_b, aes(id, stai_trait)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+pc <- ggplot(pain_b, aes(id, pain_cat)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+cse <- ggplot(pain_b, aes(id, cortisol_serum)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)  
+ 
+csa <- ggplot(pain_b, aes(id, cortisol_saliva)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+ 
+mf <- ggplot(pain_b, aes(id, mindfulness)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+ho <- ggplot(pain_b, aes(id, hospital)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_blank()) +
+  scale_x_discrete(breaks=NULL)
+
+
+grid.arrange(pa, se, ag, st, pc, cse, csa, mf, ho,
+          nrow = 3)
+
+
+```
+
+## Creating the linear mixed model for data set A: fixed effect predictors are - age, sex, STAI, pain catastrophizing, mindfulness, and serum cortisol; random effect - hospitals
+
+```{r}
+
+model_a <- lmer(pain ~ age + sex + stai_trait + pain_cat + cortisol_serum + mindfulness+ (1|hospital), data=pain_a)
+
+```
+
+## Checking influential outliers with Cook's distance
+
+Since there is only one value which is greater than the acceptable 1 threshold, this should be excluded.
+
+```{r}
+
+cooks_dist <- cooks.distance(model_a)
+
+plot(cooks_dist)
+
+cooks.distance(model_a)[which.max(cooks.distance(model_a))]
+
+
+pain_a_corr <- pain_a[-25,]
+
+
+```
+
+regenerating the model based on this correction:
+
+```{r}
+
+model_a_corr <- lmer(pain ~ age + sex + stai_trait + pain_cat + cortisol_serum + mindfulness+ (1|hospital), data=pain_a_corr)
+
+```
+
+## Assumptions need to be checked:
+
+normality of residuals - is ok
+
+```{r}
+
+residuals <- resid(model_a_corr)
+
+hist(residuals)
+
+shapiro.test(residuals)
+
+ggplot() +
+  geom_qq(aes(sample = residuals)) +
+  geom_abline(color = "red") +
+  coord_fixed()
+
+
+```
+
+linearity of the fixed predictors - is ok
+
+```{r}
+
+residuals_fitted <- pain_a_corr %>%
+  mutate(fitted = fitted(model_a_corr), residuals)
+
+
+ag_r <- ggplot(residuals_fitted, aes(age, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+se_r <- ggplot(residuals_fitted, aes(sex, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+st_r <- ggplot(residuals_fitted, aes(stai_trait, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+pc_r <- ggplot(residuals_fitted, aes(pain_cat, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+mf_r <- ggplot(residuals_fitted, aes(mindfulness, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+cse_r <- ggplot(residuals_fitted, aes(cortisol_serum, residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  geom_smooth()
+
+
+grid.arrange(se_r, ag_r, st_r, pc_r, cse_r, mf_r,
+          nrow = 3)
+
+
+```
+
+homogeneity of variance - p value is greater than 0.05, meaning that there is no evidence of heteroscedasticity
+
+
+```{r}
+
+residuals_model <- residuals(model_a_corr)
+
+fitted_model <- predict(model_a_corr, re.form = NA)
+
+bptest(residuals_model ~ fitted_model)
+
+
+```
+
+multicolinearity assumption - there is no multicolinearity (none of the results are above 3)
+
+```{r}
+
+vif(model_a_corr)
+
+```
+
+## Getting the results
+
+```{r}
+
+print(summary(model_a_corr))
+
+coefficients <- fixef(model_a_corr)
+conf_intervals <- confint(model_a_corr)
+
+conf_intervals
+
+comp_stat <- data.frame(
+  Coefficient = coefficients,
+  Conf_int = conf_intervals[3:9, ])
+
+comp_stat
+
+```
+
+## Compare the results with previous work on only one hospital (assignement 3)
+
+```{r}
+# The previous equation was for one hospital: Y = 1.72 + -0.0361*age + 0.307*sex + -0.00903*STAI trait + 0.0879*pain catastrophising + 0.533*cortisol_serum + -0.118*mindfulness
+
+
+# The present equation based on data from more hospitals:
+
+sprintf("Y = %.3g + %.3g*age + %.3g*sex + %.3g*STAI trait + %.3g*pain catastrophising + %.3g*cortisol_serum + %.3g*mindfulness", comp_stat["(Intercept)",1], comp_stat["age",1], comp_stat["sexmale",1], comp_stat["stai_trait",1], comp_stat["pain_cat",1], comp_stat["cortisol_serum", 1], comp_stat["mindfulness",1])
+
+
+
+# Add model labels
+model1_results$model <- "Model 1"
+model2_results$model <- "Model 2"
+
+# Combine into one data frame
+comparison <- rbind(model1_results, model2_results)
+print(comparison)
+
+ggplot(comparison, aes(x = term, y = estimate, color = model)) +
+  geom_point(position = position_dodge(0.5)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2, 
+                position = position_dodge(0.5)) +
+  labs(title = "Comparison of Coefficients and CIs", 
+       y = "Coefficient Estimate", x = "Predictor") +
+  theme_minimal()
+
+```
+
+## Compute the variance explained by 
+- the fixed effect predictors using marginal R^2
+- by the fixed and random effect terms combined using conditional R^2
+
+```{r}
+
+r2_results <- r2(model_a_corr)
+print(r2_results)
+
+```
+
+## Predict pain in datafile B (using the model coefficients obtained on data file A)
+
+```{r}
+
+pain_b <- read_sav("https://github.com/vborb/Fall-2024/raw/refs/heads/main/data/assignment_4_dataset_B_.sav")
+
+pain_b <- clean_names(pain_b)
+
+
+predictions_b <- predict(model_a_corr, newdata = pain_b, re.form = NA)
+
+
+```
+
+## Compute the variance explained by the model on datafile B (by using the formula: 1 - (RSS / TSS) = R^2)
+
+```{r}
+
+RSS <- sum((pain_b$pain - predictions_b)^2)
+TSS <- sum((pain_b$pain - mean(pain_b$pain))^2)
+
+R2 <- 1 - (RSS / TSS)
+print(paste("R-squared on data set B:", round(R2, 4)))
+
+```
+
+## Compare this R^2^ to the marginal and conditional R^2^ values computed for the model on datafile A, discuss differences and similarities:
+
+Since R squared of data set B (0.3503) is slightly higher than the marginal R squared of fixed effects in data set A (0.318), this means that the fixed effects of the model generalise well.
+
+As for the random & fixed effects in data set A, the conditional R squared (0.435) is higher than the R squared of data set B (0.3503), meaning that that there is an additional variance, namely differences based on hospitals. To answer the question what creates exactly this variance among hospitals would need further investigations.
+
+
 
