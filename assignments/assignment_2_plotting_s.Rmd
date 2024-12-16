@@ -103,12 +103,9 @@ Notes:
 
 ```{r}
 
-# commute <- tt_load("2019-11-05")
+commute <-read_csv(
+    "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-11-05/commute.csv")
 
-
-# commute <- commute$commute %>%
-
-commute <- read.csv('./commute.csv')
 commute <- commute %>%
   
   filter(mode %in% c("Bike", "Walk")) %>%
