@@ -379,23 +379,6 @@ comp_stat
 sprintf("Y = %.3g + %.3g*age + %.3g*sex + %.3g*STAI trait + %.3g*pain catastrophising + %.3g*cortisol_serum + %.3g*mindfulness", comp_stat["(Intercept)",1], comp_stat["age",1], comp_stat["sexmale",1], comp_stat["stai_trait",1], comp_stat["pain_cat",1], comp_stat["cortisol_serum", 1], comp_stat["mindfulness",1])
 
 
-
-# Add model labels
-model1_results$model <- "Model 1"
-model2_results$model <- "Model 2"
-
-# Combine into one data frame
-comparison <- rbind(model1_results, model2_results)
-print(comparison)
-
-ggplot(comparison, aes(x = term, y = estimate, color = model)) +
-  geom_point(position = position_dodge(0.5)) +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2, 
-                position = position_dodge(0.5)) +
-  labs(title = "Comparison of Coefficients and CIs", 
-       y = "Coefficient Estimate", x = "Predictor") +
-  theme_minimal()
-
 ```
 
 ## Compute the variance explained by 
