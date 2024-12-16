@@ -95,7 +95,7 @@ glimpse(pain_management)
 pain_management <- clean_names(pain_management)
 
 
-#Plots to spot unnatural values
+#Plots to spot unnatural values & coding errors
 
 pa <- ggplot(pain_management, aes(id, pain)) +
   geom_bar(stat = "identity") +
@@ -152,17 +152,17 @@ If you find values in the dataset during the EDA, that are not correct based on 
 
 pain_management_corr <- pain_management %>%
 
-# Correcting pain 
+# Correcting pain values - there was one case which was over the limit, it needed to be adjusted. I decided to use the mean of the total possible values.
   
   mutate(pain = ifelse(pain > 10, 5, pain)) %>%
 
 
-# Correcting sex
+# Correcting sex values - there was one instance where instead of "woman" "female" was the answer.
   
   mutate(sex = ifelse(sex == "woman", "female", sex)) %>%
   
 
-# Correcting mindfulness
+# Correcting mindfulness scores - one value was over the limit, it was adjusted to the mean of total possible scores.
 
   mutate(mindfulness = ifelse(mindfulness > 6, 3, mindfulness))
 
@@ -206,7 +206,7 @@ cooks.distance(complex_model)[which.max(cooks.distance(complex_model))]
 
 Check the normality assumption.
 
-Passed.
+Based on the visual examination and the Shapiro test, this assumption is passed.
 
 ```{r}
 
@@ -226,7 +226,7 @@ ggplot() +
 
 Check the linearity assumption.
 
-Passed.
+Based on visual examination, it is passed.
 
 ```{r}
 
@@ -278,7 +278,7 @@ grid.arrange(se_r, ag_r, st_r, pc_r, cse_r, csa_r, mf_r,
 
 Check the homoscedasticty assumption (homogeneity of variance).
 
-Breusch-Pagan Test passed
+Breusch-Pagan Test was used, since it did not reach a significant level, it is passed.
 
 ```{r}
 
@@ -304,9 +304,9 @@ http://blog.minitab.com/blog/understanding-statistics/handling-multicollinearity
 
 
 
-Cortisol saliva & serum predictors are problematic, since their values are above 3
+Cortisol saliva & serum predictors are problematic, since their values are above 3.
 
-Cortisol saliva will be excluded, since the cc is less accurate in it than in the serum
+Cortisol saliva will be excluded, since the cc is less accurate in it than in the serum.
 
 ```{r}
 
@@ -344,7 +344,7 @@ cooks.distance(complex_model_corr)[which.max(cooks.distance(complex_model_corr))
 
 #### Checking assumptions of the updated model
 
-Normality assumption
+Normality assumptions are checked.
 
 ```{r}
 
@@ -359,8 +359,6 @@ ggplot() +
   geom_abline(color = "red") +
   coord_fixed()
 
-
-# Normality checked
 
 ```
 
@@ -409,7 +407,7 @@ grid.arrange(se_r_corr, ag_r_corr, st_r_corr, pc_r_corr, cse_r_corr, mf_r_corr,
 
 ```
 
-Homoscedasticty assumption (homogeneity of variance)
+Homoscedasticty assumption (homogeneity of variance) is checked.
 
 ```{r}
 
@@ -422,18 +420,14 @@ ggplot(residuals_fitted_corr, aes(fitted_corr, residuals_corr)) +
 ncvTest(complex_model_corr)
 
 
-# Homogeneity checked
-
 ```
 
-Multicollinearity assumption
+Multicollinearity assumption is checked.
 
 ```{r}
 
 vif(complex_model_corr)
 
-
-#Multicolinearity checked
 
 ```
 
